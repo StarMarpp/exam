@@ -1,0 +1,64 @@
+upstream core-service {
+    server core-service:80;
+}
+
+upstream user-service {
+    server user-service:80;
+}
+
+upstream math-service {
+    server math-service:80;
+}
+
+map $http_x_rpc_method $target_service {
+    hostnames;
+
+    ~^user\. user-service;
+    ~^math\. math-service;
+    default core-service;
+}
+
+server {
+    listen 8080;
+    
+    location / {
+        root /var/www/frontend;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    location /rpc {
+        # Проверяем метод запроса
+        if ($request_method !~ ^POST$ ) {
+            return 405;
+        }
+        
+        # Проверяем обязательные заголовки
+        if ($http_x_service_account = "") {
+            return 401;
+        }
+        if ($http_x_service_credentials = "") {
+            return 401;
+        }
+        if ($http_x_rpc_method = "") {
+            return 400;
+        }
+        
+        # Проверяем формат тела запроса
+        if ($content_type !~* ^application/json$ ) {
+            return 400;
+        }
+        
+        # Проксируем запрос
+        proxy_pass http://$target_service;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Service-Account $http_x_service_account;
+        proxy_set_header X-Service-Credentials $http_x_service_credentials;
+        proxy_set_header X-Rpc-Method $http_x_rpc_method;
+        
+        # Ограничения
+        client_max_body_size 32k;
+    }
+}

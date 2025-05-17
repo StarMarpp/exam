@@ -24,10 +24,3 @@ go.work.sum
 # env file
 .env
 
-config
-cmd
-go.mod
-go.sum
-compose.*
-*.Dockerfile
-taskfile.*
