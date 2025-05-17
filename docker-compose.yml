@@ -1,0 +1,78 @@
+services:
+  loadbalancer:
+    image: nginx:1.25-alpine
+    restart: unless-stopped 
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./config/nginx:/etc/nginx/templates
+      - ./frontend:/var/www/frontend
+    depends_on:
+      - core-service
+      - user-service
+  
+  core-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    container_name: core-service
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    container_name: user-service
+
+  database:
+    image: postgres:17.4-alpine3.21
+    restart: unless-stopped 
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - database-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "$DB_NAME"]
+      retries: 10
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+
+  migrate-util:
+    image: postgres:15-alpine
+    volumes:
+      - ./migrations:/migrations
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
+    depends_on:
+      database:
+        condition: service_healthy
+
+  storage-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: storage-service
+    environment:
+      DB_ADDR: "database:5432"
+      DB_USER: youruser
+      DB_PASS: yourpassword
+      DB_NAME: yourdb
+    ports:
+      - "8081:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  database-data:
+  

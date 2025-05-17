@@ -1,0 +1,8 @@
+version: "3"
+
+tasks:
+  up:
+    cmd: migrate -source file://. -database postgres://$DB_USER:$DB_PASS@$DB_ADDR/$DB_NAME?sslmode=disable up {{.CLI_ARGS}}
+
+  down:
+    cmd: migrate -source file://. -database postgres://$DB_USER:$DB_PASS@$DB_ADDR/$DB_NAME?sslmode=disable down {{.CLI_ARGS}}

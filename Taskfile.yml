@@ -1,0 +1,28 @@
+version: "3"
+
+dotenv:
+  - .env
+
+includes:
+  migrate:
+    dir: ./migrations
+    taskfile: ./migrations/Taskfile.yml
+
+tasks:
+  up:
+  # dotenv: ./up.env
+    cmd: docker compose up -d --build
+
+  down:
+    cmd: docker compose down
+
+  restart:
+    cmds:
+      - task: down
+      - task: up
+
+  migrate:
+    cmd: migrate -source file:// ./migrations -database postgres://$DB_USER:$DB_PASS@127.0.0.1/$DB_NAME?sslmode=disable up 
+
+  goose:
+    cmd: goose up
